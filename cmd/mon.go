@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/goodwaysIT/ggutil/internal/ogg"
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,18 +23,25 @@ func RunMon(c *cli.Context) error {
 	for _, homePath := range homes {
 		fmt.Printf("\n--- OGG Home: %s ---\n", homePath)
 
-		// Execute 'info all' command for each OGG Home
-		output, err := executeGGSCICommand(homePath, "info all")
+		// Get OGG version and path information
+		// This might involve running a command like 'info all' or checking specific files
+		// For simplicity, let's assume 'info all' gives enough details for now.
+		fmt.Printf("Executing 'info all' in %s\n", homePath)
+		output, stderr, err := ogg.ExecuteGGSCICommand(homePath, "info all")
 		if err != nil {
-			fmt.Printf("Failed to execute 'info all' at %s: %v\n", homePath, err)
-			// Continue to the next OGG Home even if one fails
-			// If stdout contains partial information (handled in executeGGSCICommand), it will be printed here
+			fmt.Fprintf(os.Stderr, "Error executing 'info all' in %s: %v\n", homePath, err)
 			if output != "" {
-			    fmt.Printf("Partial output:\n%s\n", output)
+				fmt.Fprintf(os.Stderr, "Stdout:\n%s\n", output)
 			}
-			continue
+			if stderr != "" {
+				fmt.Fprintf(os.Stderr, "Stderr:\n%s\n", stderr)
+			}
+			continue // Try next home if error occurs
 		}
-
+		fmt.Printf("OGG Home: %s, Version and Path Info:\n%s\n", homePath, output)
+		if stderr != "" {
+			fmt.Printf("Stderr for 'info all' in %s:\n%s\n", homePath, stderr)
+		}
 		// Print the output of the 'info all' command
 		fmt.Println("GGSCI 'info all' command output:")
 		fmt.Println(output)
