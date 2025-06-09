@@ -15,11 +15,11 @@ import (
 // ggsciCommands: Command string(s) to execute in ggsci, multiple commands separated by newline.
 // It returns stdout, stderr, and an error if the command fails to execute or returns a non-zero exit code.
 func ExecuteGGSCICommand(oggHome string, ggsciCommands string) (string, string, error) {
-	ggsciPath := filepath.Join(oggHome, "ggsci.exe")
+	ggsciPath := filepath.Join(oggHome, "ggsci")
 
 	// Check if ggsci.exe exists
 	if _, err := os.Stat(ggsciPath); os.IsNotExist(err) {
-		return "", "", fmt.Errorf("ggsci.exe not found at %s: %w", ggsciPath, err)
+		return "", "", fmt.Errorf("ggsci not found at %s: %w", ggsciPath, err)
 	}
 
 	cmd := exec.Command(ggsciPath)

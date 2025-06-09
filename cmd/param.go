@@ -2,45 +2,49 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"regexp"
+	"strings"
+	"sync"
 
 	"github.com/goodwaysIT/ggutil/internal/ogg"
 	"github.com/urfave/cli/v2"
 )
 
-// RunParam handles the 'param' command to view parameter file content for specified processes.
-func RunParam(c *cli.Context, processNames []string) error {
-	fmt.Println("Executing 'param' command for processes:", processNames)
+// RunParam handles the 'param' command to view parameter file content for specified processes in all OGG Homes.
+func RunParam(c *cli.Context, processName string) error {
 	ggHomes := GetGlobalGGHomes()
 	if len(ggHomes) == 0 {
 		return cli.Exit("Error: OGG Home list is empty. Please check configuration.", 1)
 	}
 
-	if len(processNames) == 0 {
+	if processName == "" {
 		return cli.Exit("Error: No process names specified for 'param' command.", 1)
 	}
 
-	for _, home := range ggHomes {
-		fmt.Printf("\n--- OGG Home: %s ---\n", home)
-		for _, pName := range processNames {
-			command := fmt.Sprintf("view param %s", pName)
-			fmt.Printf("Executing: %s in %s\n", command, home)
-			output, stderr, err := ogg.ExecuteGGSCICommand(home, command)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error executing '%s' in %s: %v\n", command, home, err)
-				if output != "" {
-					fmt.Fprintf(os.Stderr, "Stdout:\n%s\n", output)
+	re := regexp.MustCompile(`[ ][ ]*`)
+	// doParam finds and prints parameter file content for the named process in one OGG Home.
+	doParam := func(wg *sync.WaitGroup, home string, id int) {
+		defer wg.Done()
+		gi := ogg.NewGGInst(home)
+		line := strings.Split(re.ReplaceAllString(gi.GetInfoall(), " "), "\n")
+		for _, v := range line {
+			if strings.HasPrefix(v, "EXTRACT") || strings.HasPrefix(v, "REPLICAT") {
+				field := strings.Fields(v)
+				if field[2] == strings.ToUpper(processName) {
+					er := ogg.NewGGER(home, v)
+					fmt.Printf("\n==== OGG Process [ %s ] Under Home: [ %s ] ====\n\n", field[2], home)
+					paramFile, paramContent := ogg.GGERParam(&er)
+					fmt.Printf("Param file [ %s ] content for '%s':\n\n%s\n", paramFile, field[2], paramContent)
 				}
-				if stderr != "" {
-					fmt.Fprintf(os.Stderr, "Stderr:\n%s\n", stderr)
-				}
-				continue // Continue with the next process or home
-			}
-			fmt.Printf("Output for 'view param %s':\n%s\n", pName, output)
-			if stderr != "" {
-				fmt.Printf("Stderr for 'view param %s':\n%s\n", pName, stderr)
 			}
 		}
 	}
+	// Launch concurrent parameter viewing for each home.
+	var wg sync.WaitGroup
+	wg.Add(len(ggHomes))
+	for i, home := range ggHomes {
+		go doParam(&wg, home, i)
+	}
+	wg.Wait()
 	return nil
 }

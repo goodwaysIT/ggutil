@@ -2,41 +2,53 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"regexp"
+	"strings"
+	"sync"
 
 	"github.com/goodwaysIT/ggutil/internal/ogg"
 	"github.com/urfave/cli/v2"
 )
 
-// RunInfo handles the 'info' command
-func RunInfo(c *cli.Context, processNames []string) error {
-	fmt.Println("Executing 'info' command for processes:", processNames)
-	ggHomes := GetGlobalGGHomes()
-	if len(ggHomes) == 0 {
+// RunInfo handles the 'info' command for a single process name argument, querying all OGG Homes.
+func RunInfo(c *cli.Context, processName string) error {
+	ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "Executing 'info' command for process '%s'\n", processName)
+
+	gghomes := GetGlobalGGHomes()
+	if len(gghomes) == 0 {
 		return cli.Exit("Error: OGG Home list is empty. Please check configuration.", 1)
 	}
+	if processName == "" {
+		return cli.Exit("Error: Process name is required for 'info' command.", 1)
+	}
 
-	for _, home := range ggHomes {
-		fmt.Printf("\n--- OGG Home: %s ---\n", home)
-		for _, pName := range processNames {
-			command := fmt.Sprintf("info %s\n", pName)
-			fmt.Printf("Executing: %s in %s", command, home)
-			output, stderr, err := ogg.ExecuteGGSCICommand(home, command)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error executing 'info %s' in %s: %v\n", pName, home, err)
-				if output != "" {
-					fmt.Fprintf(os.Stderr, "Stdout:\n%s\n", output)
+	// doInfo finds and prints info for the named process in one OGG Home.
+	doInfo := func(wg *sync.WaitGroup, home string, id int) {
+		defer wg.Done()
+		gi := ogg.NewGGInst(home)
+		// Print debug info for the instance.
+		ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "Create new instance %d for %s: %v\n", id, home, gi)
+		re := regexp.MustCompile(`[ ][ ]*`)
+		line := strings.Split(re.ReplaceAllString(gi.GetInfoall(), " "), "\n")
+		ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "Infoall: %v\n", line)
+		for _, v := range line {
+			if strings.HasPrefix(v, "EXTRACT") || strings.HasPrefix(v, "REPLICAT") {
+				field := strings.Fields(v)
+				if field[2] == strings.ToUpper(processName) {
+					er := ogg.NewGGER(home, v)
+					ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "Create new GGER from %s: %v\n", v, er)
+					fmt.Fprintf(c.App.Writer, "\n%s\n", ogg.GGERInfo(&er, home))
 				}
-				if stderr != "" {
-					fmt.Fprintf(os.Stderr, "Stderr:\n%s\n", stderr)
-				}
-				continue // Continue with the next process or home
 			}
-			fmt.Printf("Output for 'info %s' in %s:\n%s\n", pName, home, output)
-			if stderr != "" {
-				fmt.Printf("Stderr for 'info %s' in %s:\n%s\n", pName, home, stderr)
-			}
+
 		}
 	}
+	// Launch concurrent info fetch for each home.
+	var wg sync.WaitGroup
+	wg.Add(len(gghomes))
+	for i, home := range gghomes {
+		go doInfo(&wg, home, i)
+	}
+	wg.Wait()
 	return nil
 }

@@ -2,61 +2,38 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"sync"
 
-	"github.com/goodwaysIT/ggutil/internal/ogg" // Added for ogg.ExecuteGGSCICommand and ogg.ParseProcessNamesFromInfoAll
+	"github.com/goodwaysIT/ggutil/internal/ogg"
 	"github.com/urfave/cli/v2"
 )
 
-// RunConfig handles the 'config' command to view parameter files for all major processes.
+// RunConfig handles the 'config' command to view parameter files for all major processes in all OGG Homes.
 func RunConfig(c *cli.Context) error {
-	fmt.Println("Executing 'config' command to view parameter files of major processes.")
-	ggHomes := GetGlobalGGHomes()
-	if len(ggHomes) == 0 {
-		return cli.Exit("Error: OGG Home list is empty. Please check configuration.", 1)
+	gghomes := GetGlobalGGHomes()
+
+	if len(gghomes) == 0 {
+		ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "No OGG Home configured. Please specify using the -g parameter or GG_HOMES environment variable.\n")
+		return nil
 	}
 
-	for _, home := range ggHomes {
-		fmt.Printf("\n--- OGG Home: %s ---\n", home)
-		fmt.Println("Fetching all process information...")
-		infoAllOutput, infoAllStderr, err := ogg.ExecuteGGSCICommand(home, "info all")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error executing 'info all' in %s: %v\n", home, err)
-			if infoAllOutput != "" {
-				fmt.Fprintf(os.Stderr, "Stdout:\n%s\n", infoAllOutput)
-			}
-			if infoAllStderr != "" {
-				fmt.Fprintf(os.Stderr, "Stderr:\n%s\n", infoAllStderr)
-			}
-			continue
-		}
-
-		processNames := ogg.ParseProcessNamesFromInfoAll(infoAllOutput)
-		if len(processNames) == 0 {
-			fmt.Println("No processes found or parsed from 'info all' output.")
-			continue
-		}
-		fmt.Printf("Found processes: %v\n", processNames)
-
-		for _, pName := range processNames {
-			command := fmt.Sprintf("view param %s", pName)
-			fmt.Printf("Executing: %s\n", command)
-			output, stderrOutput, err := ogg.ExecuteGGSCICommand(home, command)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error executing '%s' in %s: %v\n", command, home, err)
-				if output != "" {
-					fmt.Fprintf(os.Stderr, "Stdout:\n%s\n", output)
-				}
-				if stderrOutput != "" {
-					fmt.Fprintf(os.Stderr, "Stderr:\n%s\n", stderrOutput)
-				}
-				continue // Continue with the next process or home
-			}
-			fmt.Printf("Output for 'view param %s':\n%s\n", pName, output)
-			if stderrOutput != "" {
-				fmt.Printf("Stderr for 'view param %s':\n%s\n", pName, stderrOutput)
-			}
-		}
+	// doConfig fetches and prints config table for one OGG Home.
+	doConfig := func(wg *sync.WaitGroup, home string, id int) {
+		defer wg.Done()
+		gi := ogg.NewGGInst(home)
+		ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "Create new instance %d for %s: %v\n", id, home, gi)
+		gi.SetER()
+		gi.SetERConfig()
+		ogg.DebugPrint(c.Bool("debug"), c.App.Writer, "ER Config: %v\n", gi.Er)
+		fmt.Println(gi.RenderConfigTable())
 	}
+
+	// Launch concurrent config fetch for each home.
+	var wg sync.WaitGroup
+	wg.Add(len(gghomes))
+	for i, home := range gghomes {
+		go doConfig(&wg, home, i)
+	}
+	wg.Wait()
 	return nil
 }

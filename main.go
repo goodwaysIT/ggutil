@@ -6,18 +6,23 @@ import (
 	"strings"
 
 	"github.com/goodwaysIT/ggutil/cmd" // Assumes cmd package is under ggutil module
+	"github.com/goodwaysIT/ggutil/internal/ogg"
 	"github.com/urfave/cli/v2"
 )
 
 // GlobalFlags stores the values of global flags
+const Version = "1.0.0" // Application version
+const RepoURL = "https://github.com/goodwaysIT/ggutil" // Open source repository URL
+
 var GlobalFlags struct {
 	GGHomes string
+	Debug   bool
 }
 
 func main() {
 	app := &cli.App{
 		Name:  "ggutil",
-		Usage: "Oracle GoldenGate multi-instance management tool",
+		Usage: "Oracle GoldenGate multi-instance management tool\nOpen Source: " + RepoURL,
 		// Define global flag -g, and attempt to get default value from GG_HOMES environment variable
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -27,35 +32,59 @@ func main() {
 				EnvVars:     []string{"GG_HOMES"}, // Automatically read from GG_HOMES environment variable
 				Destination: &GlobalFlags.GGHomes,
 			},
+			&cli.BoolFlag{
+				Name:        "debug",
+				Usage:       "Enable debug output (show errors, warnings, exceptions)",
+				Destination: &GlobalFlags.Debug,
+			},
 		},
 		Before: func(c *cli.Context) error {
 			// Process and validate OGG Home before any command execution
-			// GlobalFlags.GGHomes will be automatically populated by urfave/cli
-			// If user specifies via -g, -g takes precedence over environment variable
-			// If neither is specified, an error should be prompted
 			if GlobalFlags.GGHomes == "" {
 				// Re-check environment variable as urfave/cli's EnvVars behavior might need explicit handling
 				envHomes := os.Getenv("GG_HOMES")
 				if envHomes != "" {
 					GlobalFlags.GGHomes = envHomes
 				} else {
-					return cli.Exit("Error: OGG Home must be specified via -g parameter or GG_HOMES environment variable.", 1)
+					// Set default OGG Home path if not specified
+					defaultHome := "/acfsogg/oggo,/acfsogg/oggm,/acfsogg/oggp,/acfsogg/oggb" // Default value for OGG Home
+					GlobalFlags.GGHomes = defaultHome
+					if GlobalFlags.Debug {
+						ogg.DebugPrint(GlobalFlags.Debug, nil, "Warning: OGG Home not specified, using default: %s\n", defaultHome)
+					}
 				}
 			}
-			// Store the parsed OGG Home list in context for subcommands to use
-			// Or define a globally accessible variable/function to get the processed OGG Home list
-			// e.g.: cmd.SetParsedGGHomes(strings.Split(GlobalFlags.GGHomes, ","))
-			fmt.Printf("Detected OGG Homes: %s\n", GlobalFlags.GGHomes) // Debug information
-			// Further processing can be done here, like trimming spaces, checking if paths exist, etc.
+			if GlobalFlags.Debug {
+				ogg.DebugPrint(GlobalFlags.Debug, nil, "Detected OGG Homes: %s\n", GlobalFlags.GGHomes)
+			}
 			parsedHomes := parseAndValidateGGHomes(GlobalFlags.GGHomes)
 			if len(parsedHomes) == 0 {
+				if GlobalFlags.Debug {
+					ogg.DebugPrint(GlobalFlags.Debug, nil, "Error: Failed to parse any valid OGG Home paths.\n")
+				}
 				return cli.Exit("Error: Failed to parse any valid OGG Home paths.", 1)
 			}
-			// Pass the parsed path list to the cmd package, or via context
-			cmd.SetGlobalGGHomes(parsedHomes) // Assumes cmd package has such a function
+			cmd.SetGlobalGGHomes(parsedHomes)
 			return nil
 		},
 		Commands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Show application version and open source repository",
+				Action: func(c *cli.Context) error {
+					fmt.Println("ggutil version:", Version)
+					fmt.Println("Open Source Repository:", RepoURL)
+					return nil
+				},
+			},
+			{
+				Name:      "tasks",
+				Usage:     "List all OGG SOURCEISTABLE tasks under all homes.",
+				ArgsUsage: "",
+				Action: func(c *cli.Context) error {
+					return cmd.RunTasks(c)
+				},
+			},
 			{
 				Name:  "mon",
 				Usage: "Get version and path information for all OGG instances, print 'info all' results for each.",
@@ -66,25 +95,25 @@ func main() {
 			{
 				Name:      "info",
 				Usage:     "Get information for OGG processes (iterates over all configured OGG Homes).",
-				ArgsUsage: "<process_name1> [process_name2...]", // Hint user that process name(s) are required
+				ArgsUsage: "<process_name>", // Hint user that process name(s) are required
 				Action: func(c *cli.Context) error {
 					if c.NArg() == 0 {
 						return cli.Exit("Error: 'info' command requires at least one process name argument.", 1)
 					}
-					processNames := c.Args().Slice()
-					return cmd.RunInfo(c, processNames)
+					processName := c.Args().First()
+					return cmd.RunInfo(c, processName)
 				},
 			},
 			{
 				Name:      "param",
 				Usage:     "Get parameter configuration for OGG processes (iterates over all configured OGG Homes).",
-				ArgsUsage: "<process_name1> [process_name2...]",
+				ArgsUsage: "<process_name>",
 				Action: func(c *cli.Context) error {
 					if c.NArg() == 0 {
 						return cli.Exit("Error: 'param' command requires at least one process name argument.", 1)
 					}
-					processNames := c.Args().Slice()
-					return cmd.RunParam(c, processNames)
+					processName := c.Args().First()
+					return cmd.RunParam(c, processName)
 				},
 			},
 			{
@@ -104,26 +133,26 @@ func main() {
 			{
 				Name:      "stats",
 				Usage:     "View statistics for a specific OGG process (total, daily, hourly) (iterates over all configured OGG Homes).",
-				ArgsUsage: "<process_name> [dimensions: total, daily, hourly, monthly, yearly]", // Process name is required, dimensions optional
+				ArgsUsage: "<process_name>", // Process name is required, dimensions optional
 				Action: func(c *cli.Context) error {
 					if c.NArg() == 0 {
 						return cli.Exit("Error: 'stats' command requires a process name argument.", 1)
 					}
 					processName := c.Args().First()
-					statArgs := c.Args().Slice()[1:] // Get arguments after process name as stat dimensions
-					return cmd.RunStats(c, processName, statArgs)
+					// statArgs := c.Args().Slice()[1:] // Get arguments after process name as stat dimensions
+					return cmd.RunStats(c, processName)
 				},
 			},
 			{
 				Name:      "collect",
 				Usage:     "Collect information for a specific OGG process (info, infodetail, showch, status) (iterates over all configured OGG Homes).",
-				ArgsUsage: "<process_name1> [process_name2...]",
+				ArgsUsage: "<process_name>",
 				Action: func(c *cli.Context) error {
 					if c.NArg() == 0 {
 						return cli.Exit("Error: 'collect' command requires at least one process name argument.", 1)
 					}
-					processNames := c.Args().Slice()
-					return cmd.RunCollect(c, processNames)
+					processName := c.Args().First()
+					return cmd.RunCollect(c, processName)
 				},
 			},
 		},
@@ -131,8 +160,9 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		// urfave/cli usually prints its own errors, but this can catch others.
-		fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
+		if GlobalFlags.Debug {
+			fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
+		}
 		os.Exit(1)
 	}
 }
