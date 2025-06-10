@@ -1,4 +1,4 @@
-# 构建指南（Build Instructions, 中文）
+# 构建指南
 
 本项目支持在主流 Linux x86_64 及 ARM (aarch64) 架构下编译和运行。以下为标准构建步骤。
 
