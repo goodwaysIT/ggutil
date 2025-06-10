@@ -34,7 +34,21 @@
   - Go 1.18 及以上
   - Oracle GoldenGate 已安装并配置（支持多 Home）
   - 依赖 Go 第三方库：`urfave/cli/v2`、`bndr/gotabulate`、`mholt/archiver/v3`
-- **安装步骤**：
+- **安装方式**：
+
+  **方式一：直接下载安装（推荐）**
+  
+  无需编译和 Go 环境，直接前往 [Releases 页面](https://github.com/goodwaysIT/ggutil/releases) 下载对应平台的二进制包（如 `ggutil-x86_64`、`ggutil-arm64` 等），解压后赋予可执行权限即可：
+  ```bash
+  wget https://github.com/goodwaysIT/ggutil/releases/download/v1.0.0/ggutil-x86_64
+  chmod +x ggutil-x86_64
+  ./ggutil-x86_64 -h
+  ```
+  > ARM 架构请下载 `ggutil-arm64`，其它平台选择对应版本。
+
+  **方式二：源码编译安装**
+  
+  需本地具备 Go 环境，适用于需要定制或二次开发场景。
   ```bash
   git clone https://github.com/goodwaysIT/ggutil.git
   cd ggutil
@@ -43,6 +57,8 @@
   ```
 
 ---
+
+> 详细构建说明请见 [BUILD-zh.md](./BUILD-zh.md)
 
 ## 快速上手
 
@@ -63,7 +79,7 @@
 ./ggutil <子命令> -h
 ```
 
-### 3. 常用命令示例
+### 3. 常用命令示例c
 
 - 查询所有 OGG Home 下的表级任务
   ```bash
@@ -128,4 +144,4 @@
 
 ---
 
-如需英文 README、功能扩展或企业定制，请联系维护者或提交 issue！
+如需功能扩展或企业定制，请联系维护者或提交 issue！
