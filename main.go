@@ -65,6 +65,7 @@ func main() {
 				return cli.Exit("Error: Failed to parse any valid OGG Home paths.", 1)
 			}
 			cmd.SetGlobalGGHomes(parsedHomes)
+			ogg.SetDebugMode(GlobalFlags.Debug)
 			return nil
 		},
 		Commands: []*cli.Command{

@@ -57,7 +57,7 @@ func NewGGER(home, info string) GGER {
 		//other file
 		lines, err := readLines(er1.paramFile)
 		if err != nil {
-			fmt.Println(err)
+			DebugPrint(IsDebugMode, nil, "%v\n", err)
 		}
 		var obFile string
 		var propsFile, propertiesFile string
@@ -87,7 +87,7 @@ func NewGGER(home, info string) GGER {
 		if propsFile != "" {
 			lines, err := readLines(propsFile)
 			if err != nil {
-				fmt.Println(err)
+				DebugPrint(IsDebugMode, nil, "%v\n", err)
 			}
 			for _, v := range lines {
 				if (!strings.HasPrefix(v, "#")) && strings.HasSuffix(v, "properties") {
@@ -124,7 +124,7 @@ func (er *GGER) setConfig(home string) {
 	if er.program == "EXTRACT" {
 		lines, err := readLines(er.paramFile)
 		if err != nil {
-			fmt.Println(err)
+			DebugPrint(IsDebugMode, nil, "%v\n", err)
 		}
 		for _, v := range lines {
 			if strings.HasPrefix(v, "--") {
@@ -134,14 +134,15 @@ func (er *GGER) setConfig(home string) {
 			// for Oracle DB
 			if strings.HasPrefix(v, "userid") || strings.HasPrefix(v, "USERID") {
 				field := strings.Fields(v)
-				s := strings.Split(field[1], "@")
-				if len(s) > 0 {
+				s1 := strings.TrimRight(field[1], ",")
+				s := strings.Split(s1, "@")
+				if len(s) > 1 {
 					source = s[1]
 					if !strings.Contains(s[1], "/") {
 						source = source + "(" + getOracleInfo(s[1]) + ")"
 					}
 				} else {
-					source = field[1]
+					source = s1
 				}
 
 				break
@@ -149,7 +150,7 @@ func (er *GGER) setConfig(home string) {
 			//for Non-Oracle DB
 			if strings.HasPrefix(v, "sourcedb") || strings.HasPrefix(v, "SOURCEDB") {
 				field := strings.Split(v, " ")
-				source = field[1]
+				source = strings.TrimRight(field[1], ",")
 				break
 			}
 
@@ -163,7 +164,7 @@ func (er *GGER) setConfig(home string) {
 			//remote pump
 			if strings.HasPrefix(v, "rmthost") || strings.HasPrefix(v, "RMTHOST") {
 				field := strings.Fields(v)
-				target = field[1]
+				target = strings.TrimRight(field[1], ",")
 				continue
 			}
 			if strings.HasPrefix(v, "rmtfile") || strings.HasPrefix(v, "RMTFILE") {
@@ -231,7 +232,7 @@ func (er *GGER) setConfig(home string) {
 
 		lines, err := readLines(er.paramFile)
 		if err != nil {
-			fmt.Println(err)
+			DebugPrint(IsDebugMode, nil, "%v\n", err)
 		}
 		for _, v := range lines {
 			if strings.HasPrefix(v, "--") {
@@ -240,14 +241,14 @@ func (er *GGER) setConfig(home string) {
 			//for  DB
 			if strings.HasPrefix(v, "targetdb") || strings.HasPrefix(v, "TARGETDB") {
 				field := strings.Fields(v)
-				target = strings.Replace(field[1], ",", "", -1)
+				target = strings.TrimRight(field[1], ",")
 			}
 			// for Oracle DB
 			if strings.HasPrefix(v, "userid") || strings.HasPrefix(v, "USERID") {
 				field := strings.Fields(v)
-				s1 := strings.Replace(field[1], ",", "", -1)
+				s1 := strings.TrimRight(field[1], ",")
 				s := strings.Split(s1, "@")
-				if len(s) > 0 {
+				if len(s) > 1 {
 					target = s[1]
 					if !strings.Contains(s[1], "/") {
 						target = target + "(" + getOracleInfo(s[1]) + ")"
@@ -273,7 +274,7 @@ func (er *GGER) setConfig(home string) {
 	//prm file
 	prmLine, err := readLines(er.paramFile)
 	if err != nil {
-		fmt.Println(err)
+		DebugPrint(IsDebugMode, nil, "%v\n", err)
 	}
 	for _, v := range prmLine {
 		//table count
@@ -289,7 +290,7 @@ func (er *GGER) setConfig(home string) {
 			if isExist(v) {
 				lines, err := readLines(v)
 				if err != nil {
-					fmt.Println(err)
+					DebugPrint(IsDebugMode, nil, "%v\n", err)
 				}
 				for _, v := range lines {
 					//table count
@@ -305,7 +306,7 @@ func (er *GGER) setConfig(home string) {
 	//rpt file
 	rptLine, err := readLines(er.rptFile)
 	if err != nil {
-		fmt.Println(err)
+		DebugPrint(IsDebugMode, nil, "%v\n", err)
 	}
 	for _, v := range rptLine {
 		//table count

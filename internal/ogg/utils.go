@@ -9,6 +9,13 @@ import (
 	"strings"
 )
 
+var IsDebugMode bool
+
+// SetDebugMode sets the debug mode for the ogg package.
+func SetDebugMode(debug bool) {
+	IsDebugMode = debug
+}
+
 // execShell executes a shell command and returns its output as string
 func execShell(cmd string) (string, error) {
 	execCmd := exec.Command("/bin/bash", "-c", cmd)
