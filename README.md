@@ -4,6 +4,8 @@
 
 **ggutil** is a command-line management tool designed for enterprise-level Oracle GoldenGate (OGG) multi-instance environments. It supports concurrent batch operations across multiple OGG Homes, significantly enhancing the automation and efficiency of daily OGG operations, monitoring, configuration, and data collection. This tool is fully open-source; contributions and discussions are welcome!
 
+Developed from years of practical experience, `ggutil` addresses the complexity of managing numerous OGG software instances on a single server or cluster. It leverages the remote operation capabilities available in GoldenGate 12c and later versions, which support most databases, to provide a powerful and centralized maintenance toolkit. With years of production experience, the tool has proven its stability and supports GoldenGate for Oracle, MySQL, DB2 LUW, DB2 z/OS, and Big Data.
+
 - Open Source Repository: [https://github.com/goodwaysIT/ggutil](https://github.com/goodwaysIT/ggutil)
 
 ---
@@ -82,33 +84,181 @@
 
 ### 3. Common Command Examples
 
-- Query table-level tasks in all OGG Homes
+- **Show Help Information**
+
   ```bash
-  ./ggutil tasks
+  $ ggutil -h
+  NAME:
+     ggutil - Oracle GoldenGate multi-instance management tool
+              Open Source: https://github.com/goodwaysIT/ggutil
+
+  USAGE:
+     ggutil [global options] command [command options]
+
+  COMMANDS:
+     version  Show application version and open source repository
+     tasks    List all OGG SOURCEISTABLE tasks under all homes.
+     mon      Get version and path information for all OGG instances, print 'info all' results for each.
+     info     Get information for OGG processes (iterates over all configured OGG Homes).
+     param    Get parameter configuration for OGG processes (iterates over all configured OGG Homes).
+     config   View process configuration details within OGG instances (iterates over all configured OGG Homes).
+     backup   Backup configuration, log, report files, etc., for OGG instances (iterates over all configured OGG Homes).
+     stats    View statistics for a specific OGG process (total, daily, hourly) (iterates over all configured OGG Homes).
+     collect  Collect information for a specific OGG process (info, infodetail, showch, status) (iterates over all configured OGG Homes).
+     help, h  Shows a list of commands or help for one command
+
+  GLOBAL OPTIONS:
+     --gghomes value, -g value  Specify one or more OGG Home paths, comma-separated. If not specified, attempts to read from GG_HOMES environment variable. [$GG_HOMES]
+     --debug                    Enable debug output (show errors, warnings, exceptions) (default: false)
+     --help, -h                 show help
   ```
-- View OGG version and `info all` for all Homes
+
+- **Monitor All OGG Instances (`mon`)**
+
   ```bash
-  ./ggutil mon
+  $ ggutil mon
+
+  ==== Home: /acfsogg/oggb, OGG for Big Data, Version 19.1.0.0.200714 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_200628.2141
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  REPLICAT    RUNNING     RKAFKA      00:00:00      00:00:05
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggm, OGG for MySQL, Version 19.1.0.0.230418 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_230413.1325
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  REPLICAT    RUNNING     REPMYSQL    00:00:00      00:00:05
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggp, OGG for PostgreSQL, Version 21.14.0.0.0 OGGCORE_21.14.0.0.0OGGRU_PLATFORMS_240404.1108
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  EXTRACT     RUNNING     EXT_PG      00:00:00      00:00:07
+  REPLICAT    RUNNING     REP_PG      00:00:00      00:00:01
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggo, OGG for Oracle, Version 19.1.0.0.4 OGGCORE_19.1.0.0.0_PLATFORMS_191017.1054_FBO
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  EXTRACT     RUNNING     DPORA       00:00:00      00:00:06
+  EXTRACT     RUNNING     EXTORA      00:00:00      00:00:03
+
+
+  --------------------------------------------------------------------------------
   ```
-- Query detailed information for a specific process
+
+- **View Process Configurations (`config`)**
+
   ```bash
-  ./ggutil info extorcl
+  $ ggutil config
+
+  ==== Home: /acfsogg/oggm, OGG for MySQL, Version 19.1.0.0.230418 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_230413.1325
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  REPLICAT   RUNNING    REPMYSQL   1          1          ./dirdat/my000000000(4539575)                ogg_target_db@mysqldb:3306
+
+
+  ==== Home: /acfsogg/oggb, OGG for Big Data, Version 19.1.0.0.200714 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_200628.2141
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  REPLICAT   RUNNING    RKAFKA     1          1          AdapterExamples/trail/tr000000000(5660)      Kafka
+
+
+  ==== Home: /acfsogg/oggp, OGG for PostgreSQL, Version 21.14.0.0.0 OGGCORE_21.14.0.0.0OGGRU_PLATFORMS_240404.1108
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  EXTRACT    RUNNING    EXT_PG     1          1          testpdb,                                     ./dirdat/pg000000001(1719914)
+  REPLICAT   RUNNING    REP_PG     1          1          ./dirdat/pg000000001(1719914)                testpdb
+
+
+  ==== Home: /acfsogg/oggo, OGG for Oracle, Version 19.1.0.0.4 OGGCORE_19.1.0.0.0_PLATFORMS_191017.1054_FBO
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  EXTRACT*p  RUNNING    DPORA      1          1          /acfsogg/oggo/dirdat/or000000001(2700)       mysqldb,
+  EXTRACT    RUNNING    EXTORA     1          1          oracledb/orcl,                               ./dirdat/or000000001(2700)
   ```
-- View process parameter file content
+
+- **View Parameter File (`param`)**
+
   ```bash
-  ./ggutil param extorcl
+  $ ggutil param extora
+
+  ==== OGG Process [ EXTORA ] Under Home: [ /acfsogg/oggo ] ====
+
+  Param file [ /acfsogg/oggo/dirprm/extora.prm ] content for 'EXTORA':
+
+  EXTRACT extora
+  USERID c##ogguser@oracledb/orcl, PASSWORD ogguser2025
+  FETCHOPTIONS FETCHPKUPDATECOLS
+  discardfile ./dirrpt/extora.dsc, append, megabytes 1000
+  exttrail ./dirdat/or
+  sourcecatalog orclpdb
+  DDL INCLUDE MAPPED
+  TABLE TUSER.TTAB1;
   ```
-- Backup all key configuration/log/report files
+
+- **View Process Statistics (`stats`)**
+
   ```bash
-  ./ggutil backup
+  $ ggutil stats rep_pg
+
+  ==== OGG Process [ REP_PG ] Under Home: [ /acfsogg/oggp ] ====
+
+  ========================================[total stats]========================================
+
+  *** Total statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert     | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+============+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 5000.00    | 4000.00    |            | 3000.00    | 0.00       | 0.00        | 12000.00      |
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+
+  ========================================[daily stats]========================================
+
+  *** Daily statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert     | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+============+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 5000.00    | 4000.00    |            | 3000.00    | 0.00       | 0.00        | 12000.00      |
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+
+  ========================================[hourly stats/sec]========================================
+
+  *** Hourly statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+-----------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert    | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+===========+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 0.01      | 0.01       |            | 0.01       | 0.00       | 0.00        | 0.02          |
+  +-------------------------------+-----------+------------+------------+------------+------------+-------------+---------------+
   ```
-- Collect statistics on business table operations for a process
+
+- **Backup Key Files (`backup`)**
+
   ```bash
-  ./ggutil stats extorcl
-  ```
-- Collect and archive all relevant files for a process
-  ```bash
-  ./ggutil collect extorcl
+  $ ggutil backup
+
+  Please refer to gz file /tmp/oggbackup_xugu01_20250711_195536.tar.gz
   ```
 
 ---

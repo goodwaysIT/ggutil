@@ -3,6 +3,8 @@
 **ggutil** 是一款面向企业级 Oracle GoldenGate (OGG) 多实例环境的命令行管理工具，支持多 OGG Home 并发批量操作，极大提升 OGG 日常运维、监控、配置和数据采集的自动化与效率。  
 本工具完全开源，欢迎贡献与交流！
 
+本工具的开发源于多年的实践经验，旨在解决单一服务器或集群上管理大量 OGG 软件实例的复杂性。它利用 GoldenGate 12c 及更高版本中提供的、支持大多数数据库的远程操作能力，提供了一个强大的集中式维护工具集。目前该工具已经过多年的生产环境检验，稳定支持 GoldenGate for Oracle, MySQL, DB2 LUW, DB2 z/OS, 和 Big Data。
+
 - 开源地址: [https://github.com/goodwaysIT/ggutil](https://github.com/goodwaysIT/ggutil)
 
 ---
@@ -79,35 +81,183 @@
 ./ggutil <子命令> -h
 ```
 
-### 3. 常用命令示例c
+### 3. 常用命令示例
 
-- 查询所有 OGG Home 下的表级任务
+- **显示帮助信息**
+
   ```bash
-  ./ggutil tasks
+  $ ggutil -h
+  NAME:
+     ggutil - Oracle GoldenGate multi-instance management tool
+              Open Source: https://github.com/goodwaysIT/ggutil
+
+  USAGE:
+     ggutil [global options] command [command options]
+
+  COMMANDS:
+     version  Show application version and open source repository
+     tasks    List all OGG SOURCEISTABLE tasks under all homes.
+     mon      Get version and path information for all OGG instances, print 'info all' results for each.
+     info     Get information for OGG processes (iterates over all configured OGG Homes).
+     param    Get parameter configuration for OGG processes (iterates over all configured OGG Homes).
+     config   View process configuration details within OGG instances (iterates over all configured OGG Homes).
+     backup   Backup configuration, log, report files, etc., for OGG instances (iterates over all configured OGG Homes).
+     stats    View statistics for a specific OGG process (total, daily, hourly) (iterates over all configured OGG Homes).
+     collect  Collect information for a specific OGG process (info, infodetail, showch, status) (iterates over all configured OGG Homes).
+     help, h  Shows a list of commands or help for one command
+
+  GLOBAL OPTIONS:
+     --gghomes value, -g value  Specify one or more OGG Home paths, comma-separated. If not specified, attempts to read from GG_HOMES environment variable. [$GG_HOMES]
+     --debug                    Enable debug output (show errors, warnings, exceptions) (default: false)
+     --help, -h                 show help
   ```
-- 查看所有 Home 的 OGG 版本与 info all
+
+- **监控所有 OGG 实例 (`mon`)**
+
   ```bash
-  ./ggutil mon
+  $ ggutil mon
+
+  ==== Home: /acfsogg/oggb, OGG for Big Data, Version 19.1.0.0.200714 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_200628.2141
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  REPLICAT    RUNNING     RKAFKA      00:00:00      00:00:05
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggm, OGG for MySQL, Version 19.1.0.0.230418 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_230413.1325
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  REPLICAT    RUNNING     REPMYSQL    00:00:00      00:00:05
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggp, OGG for PostgreSQL, Version 21.14.0.0.0 OGGCORE_21.14.0.0.0OGGRU_PLATFORMS_240404.1108
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  EXTRACT     RUNNING     EXT_PG      00:00:00      00:00:07
+  REPLICAT    RUNNING     REP_PG      00:00:00      00:00:01
+
+
+  --------------------------------------------------------------------------------
+
+
+  ==== Home: /acfsogg/oggo, OGG for Oracle, Version 19.1.0.0.4 OGGCORE_19.1.0.0.0_PLATFORMS_191017.1054_FBO
+
+  Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+
+  MANAGER     RUNNING
+  EXTRACT     RUNNING     DPORA       00:00:00      00:00:06
+  EXTRACT     RUNNING     EXTORA      00:00:00      00:00:03
+
+
+  --------------------------------------------------------------------------------
   ```
-- 查询指定进程详细信息
+
+- **查看进程配置 (`config`)**
+
   ```bash
-  ./ggutil info extorcl
+  $ ggutil config
+
+  ==== Home: /acfsogg/oggm, OGG for MySQL, Version 19.1.0.0.230418 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_230413.1325
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  REPLICAT   RUNNING    REPMYSQL   1          1          ./dirdat/my000000000(4539575)                ogg_target_db@mysqldb:3306
+
+
+  ==== Home: /acfsogg/oggb, OGG for Big Data, Version 19.1.0.0.200714 OGGCORE_19.1.0.0.0OGGBP_PLATFORMS_200628.2141
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  REPLICAT   RUNNING    RKAFKA     1          1          AdapterExamples/trail/tr000000000(5660)      Kafka
+
+
+  ==== Home: /acfsogg/oggp, OGG for PostgreSQL, Version 21.14.0.0.0 OGGCORE_21.14.0.0.0OGGRU_PLATFORMS_240404.1108
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  EXTRACT    RUNNING    EXT_PG     1          1          testpdb,                                     ./dirdat/pg000000001(1719914)
+  REPLICAT   RUNNING    REP_PG     1          1          ./dirdat/pg000000001(1719914)                testpdb
+
+
+  ==== Home: /acfsogg/oggo, OGG for Oracle, Version 19.1.0.0.4 OGGCORE_19.1.0.0.0_PLATFORMS_191017.1054_FBO
+
+  Program    Status     Group      TabNo(prm) TabNo(rpt) Source                                       Target
+  ---------- ---------- ---------- ---------- ---------- -------------------------------------------- --------------------------------------------
+  EXTRACT*p  RUNNING    DPORA      1          1          /acfsogg/oggo/dirdat/or000000001(2700)       mysqldb,
+  EXTRACT    RUNNING    EXTORA     1          1          oracledb/orcl,                               ./dirdat/or000000001(2700)
   ```
-- 查看进程参数文件内容
+
+- **查看参数文件 (`param`)**
+
   ```bash
-  ./ggutil param extorcl
+  $ ggutil param extora
+
+  ==== OGG Process [ EXTORA ] Under Home: [ /acfsogg/oggo ] ====
+
+  Param file [ /acfsogg/oggo/dirprm/extora.prm ] content for 'EXTORA':
+
+  EXTRACT extora
+  USERID c##ogguser@oracledb/orcl, PASSWORD ogguser2025
+  FETCHOPTIONS FETCHPKUPDATECOLS
+  discardfile ./dirrpt/extora.dsc, append, megabytes 1000
+  exttrail ./dirdat/or
+  sourcecatalog orclpdb
+  DDL INCLUDE MAPPED
+  TABLE TUSER.TTAB1;
   ```
-- 备份所有关键配置/日志/报告文件
+
+- **查看进程统计信息 (`stats`)**
+
   ```bash
-  ./ggutil backup
+  $ ggutil stats rep_pg
+
+  ==== OGG Process [ REP_PG ] Under Home: [ /acfsogg/oggp ] ====
+
+  ========================================[total stats]========================================
+
+  *** Total statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert     | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+============+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 5000.00    | 4000.00    |            | 3000.00    | 0.00       | 0.00        | 12000.00      |
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+
+  ========================================[daily stats]========================================
+
+  *** Daily statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert     | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+============+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 5000.00    | 4000.00    |            | 3000.00    | 0.00       | 0.00        | 12000.00      |
+  +-------------------------------+------------+------------+------------+------------+------------+-------------+---------------+
+
+  ========================================[hourly stats/sec]========================================
+
+  *** Hourly statistics since 2025-07-05 14:53:19 ***
+  +-------------------------------+-----------+------------+------------+------------+------------+-------------+---------------+
+  | Table Name                    | Insert    | Updates    | Befores    | Deletes    | Upserts    | Discards    | Operations    |
+  +===============================+===========+============+============+============+============+=============+===============+
+  | source_schema.source_table    | 0.01      | 0.01       |            | 0.01       | 0.00       | 0.00        | 0.02          |
+  +-------------------------------+-----------+------------+------------+------------+------------+-------------+---------------+
   ```
-- 统计进程业务表操作数
+
+- **备份关键文件 (`backup`)**
+
   ```bash
-  ./ggutil stats extorcl
-  ```
-- 采集进程所有相关文件归档
-  ```bash
-  ./ggutil collect extorcl
+  $ ggutil backup
+
+  Please refer to gz file /tmp/oggbackup_xugu01_20250711_195536.tar.gz
   ```
 
 ---
