@@ -30,6 +30,14 @@ Developed from years of practical experience, `ggutil` addresses the complexity 
 
 ---
 
+## Architecture Overview
+
+Below is the concurrent workflow architecture of ggutil CLI:
+
+![ggutil CLI Concurrent Workflow](./ggutil-cli-concurrent-workflow-architecture.svg)
+
+---
+
 ## Installation and Requirements
 
 - **Operating System**: Linux (Oracle Linux/RedHat/CentOS recommended)

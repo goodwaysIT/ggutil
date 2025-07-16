@@ -29,6 +29,14 @@
 
 ---
 
+## 架构总览
+
+ggutil CLI 并发工作流架构如下图所示：
+
+![ggutil CLI 并发架构](./ggutil-cli-concurrent-workflow-architecture.svg)
+
+---
+
 ## 安装与环境要求
 
 - **操作系统**：Linux (建议 Oracle Linux/RedHat/CentOS)
